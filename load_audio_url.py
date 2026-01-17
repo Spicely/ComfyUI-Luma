@@ -72,11 +72,40 @@ class LoadAudioByUrl:
                     os.remove(destination_path)
                 raise RuntimeError(f"Failed to download audio: {str(e)}")
         
+        # Try loading audio with different backends for better compatibility
+        waveform = None
+        sample_rate = None
+        last_error = None
+        
+        # List of backends to try (in order of preference)
+        backends_to_try = []
+        
+        # Check available backends
         try:
-            # Load audio using torchaudio
-            waveform, sample_rate = torchaudio.load(destination_path)
-        except Exception as e:
-             raise RuntimeError(f"Failed to load audio file {destination_path}: {str(e)}")
+            available_backends = torchaudio.list_audio_backends()
+            # Prioritize soundfile and sox_io as they are more commonly available
+            for backend in ['soundfile', 'sox_io', 'ffmpeg']:
+                if backend in available_backends:
+                    backends_to_try.append(backend)
+            # Also try without specifying backend (default)
+            backends_to_try.append(None)
+        except:
+            # If we can't list backends, just try default
+            backends_to_try = [None]
+        
+        for backend in backends_to_try:
+            try:
+                if backend:
+                    waveform, sample_rate = torchaudio.load(destination_path, backend=backend)
+                else:
+                    waveform, sample_rate = torchaudio.load(destination_path)
+                break  # Success, exit loop
+            except Exception as e:
+                last_error = e
+                continue
+        
+        if waveform is None:
+            raise RuntimeError(f"Failed to load audio file {destination_path}. Tried backends: {backends_to_try}. Last error: {str(last_error)}")
         
         # Convert to ComfyUI AUDIO format: {"waveform": [batch, channels, samples], "sample_rate": int}
         # torchaudio.load returns [channels, samples]
