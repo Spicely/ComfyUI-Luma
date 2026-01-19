@@ -31,8 +31,8 @@ class LoadVideoByUrl:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "AUDIO", "STRING")
-    RETURN_NAMES = ("images", "audio", "video_path")
+    RETURN_TYPES = ("IMAGE", "AUDIO", "STRING", "FLOAT")
+    RETURN_NAMES = ("images", "audio", "video_path", "fps")
     FUNCTION = "load_video"
     CATEGORY = "Luma"
 
@@ -81,6 +81,9 @@ class LoadVideoByUrl:
         cap = cv2.VideoCapture(destination_path)
         if not cap.isOpened():
              raise RuntimeError(f"Failed to open video file: {destination_path}")
+
+        # Get FPS
+        fps = cap.get(cv2.CAP_PROP_FPS)
 
         # Handle frame skipping and limits
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -140,15 +143,9 @@ class LoadVideoByUrl:
         
         if audio_output is None:
              # Create a dummy silent audio
-             # 1 channel, 0 samples, 44100 sample rate (arbitrary valid empty)
-             # Or just return None if ComfyUI allows it? 
-             # Safe standard for empty audio in Comfy is usually a minimal chart or None.
-             # Let's try to be safe: If users plug it into audio nodes, they expect the dict.
-             # Create 1 second of silence? Or just empty tensor.
-             # Standard Empty Audio seems to be:
              audio_output = {"waveform": torch.zeros(1, 1, 0), "sample_rate": 44100}
 
-        return (images_output, audio_output, destination_path)
+        return (images_output, audio_output, destination_path, float(fps))
 
 NODE_CLASS_MAPPINGS = {
     "LoadVideoByUrl": LoadVideoByUrl
