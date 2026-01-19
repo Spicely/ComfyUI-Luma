@@ -1,3 +1,5 @@
 requests
 torchaudio
 soundfile
+opencv-python
+numpy
